@@ -1,0 +1,8 @@
+\ Model ScalarObjective_copy
+\ LP format - for model browsing. Use MPS format to capture full model detail.
+Minimize
+ 
+Subject To
+ c_e_energy_bs_compute(1_1)_: 2.06958e-06 beta(1_1) = -128.8
+Bounds
+End
