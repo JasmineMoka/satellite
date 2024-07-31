@@ -14,7 +14,7 @@ from orlibary import ORLibary
 
 data_set = ORLibary()
 
-n_bs_number, n_per_cell_number, n_leo_number, deadline, bs_compute_capacity, leo_compute_capacity = data_set.gen_assign_prob(file_name='c05200.txt')
+n_bs_number, n_per_cell_number, n_leo_number, deadline, bs_compute_capacity, leo_compute_capacity = data_set.gen_assign_prob(file_name='e05200.txt')
 
 def initialize_deadline(model, i, j):
     return deadline[int(i - 1), int(j - 1)]
@@ -33,7 +33,7 @@ model.M, model.N, model.O = RangeSet(1, int(n_bs_number)), RangeSet(1, int(n_per
 model.deadline = Param(model.M, model.N, within=NonNegativeReals, initialize=initialize_deadline)
 model.bs_compute_capacity = Param(model.M, within=NonNegativeReals, initialize=init_bs_compute_capacity)
 model.leo_compute_capacity = Param(model.O, within=NonNegativeReals, initialize=initialize_leo_compute_capacity)
-model.Cache = Param(model.O, initialize= pow(10, 4))
+model.Cache = Param(model.O, initialize= pow(10, 3))
 model.compute_capacity_user = Param(model.M, model.N, initialize=pow(10, 5))
 # model.f_LEO = Param(model.O, initialize=lambda model, k: 100)
 
@@ -41,28 +41,31 @@ model.compute_capacity_user = Param(model.M, model.N, initialize=pow(10, 5))
 model.alpha = Var(model.M, model.N, within=NonNegativeReals, bounds=(0, 1), initialize=0.3)
 model.beta = Var(model.M, model.N, within=NonNegativeReals, bounds=(0, 1), initialize=0.5)
 model.gamma = Var(model.M, model.N, within=NonNegativeReals, bounds=(0, 1), initialize=0.2)
-# model.rho = Var(model.M, model.N, model.O, initialize=0, within=Binary)
+# model.alpha = Var(model.M, model.N, initialize=0, within=Binary)
+# model.beta = Var(model.M, model.N, initialize=0, within=Binary)
+# model.gamma = Var(model.M, model.N, initialize=1, within=Binary)
+# model.rho = Var(model.M, model.N, model.O, initialize=1, within=Binary)
 model.rho = Var(model.M, model.N, model.O, within=NonNegativeReals, bounds=(0, 1), initialize=0.05)
-# model.eta = Var(model.M, model.N, model.O, initialize=0, within=Binary)
+# model.eta = Var(model.M, model.N, model.O, initialize=1, within=Binary)
 model.eta = Var(model.M, model.N, model.O, within=NonNegativeReals, bounds=(0, 1), initialize=0.1)
 model.epsilon = Var(model.M, model.N, within=NonNegativeReals, bounds=(0, 1), initialize=0.2)
 model.delta = Var(model.M, model.N, model.O, within=NonNegativeReals, bounds=(0, 1), initialize=0.1)
-model.f_bs = Var(model.M, model.N, within=NonNegativeReals,initialize=300)
-model.f_leo = Var(model.M, model.N, model.O, within=NonNegativeReals,initialize=200)
+model.f_bs = Var(model.M, model.N, within=NonNegativeReals,initialize=10000)
+model.f_leo = Var(model.M, model.N, model.O, within=NonNegativeReals,initialize=500)
 
 
 # model.white_noise = Param(model.M, model.N, initialize=lambda model, i, j: abs(np.random.normal(0, 7.9 * pow(10, -12))))
-model.white_noise = Param(model.M, model.N, initialize=pow(10, -12))
+model.white_noise = Param(model.M, model.N, initialize=pow(10, -9))
 model.noise_variance = Param(model.M, model.N, initialize=0)
 model.band_C = Param(initialize=pow(10, 8))
 model.band_Ka = Param(initialize=pow(10, 8))
 
 # 用户和BS的距离矩阵
 # distance_BS_user_data = np.linspace(300, 1000, num=n_bs_number * n_per_cell_number)
-distance_BS_user_data = np.linspace(100, 100, num=n_bs_number * n_per_cell_number)
-distance_BS_user_dict = {(i+1, j+1): distance_BS_user_data[i*n_per_cell_number + j] for i in range(n_bs_number) for j in range(n_per_cell_number)}
+distance_BS_user_data = np.random.uniform(100, 1000, (n_bs_number, n_per_cell_number))
+distance_BS_user_dict = {(i+1, j+1): distance_BS_user_data[i, j] for i in range(n_bs_number) for j in range(n_per_cell_number)}
 model.distance_BS_user = Param(model.M, model.N, initialize=distance_BS_user_dict)
-trans_power_data = {(i, j): np.random.uniform(1, 1) for i in model.M for j in model.N}
+trans_power_data = {(i, j): np.random.randint(1, 3) for i in model.M for j in model.N}
 model.trans_power = Param(model.M, model.N, initialize=trans_power_data, within=NonNegativeReals)
 
 def channel_BS_user(model, i, j):
@@ -91,7 +94,7 @@ def total_capacity_BS_user(model, i, j):
     return sum(model.capacity_BS_user[i, j] * model.beta[i, j] for j in model.N)
 model.total_capacity_BS_user = Param(model.M, model.N, initialize=total_capacity_BS_user)
 
-distance_LEO_user_data ={(i, j, k): int(np.random.uniform(5000, 5000)) for i in model.M for j in model.N for k in model.O}
+distance_LEO_user_data ={(i, j, k): int(np.random.randint(5000, 50000)) for i in model.M for j in model.N for k in model.O}
 model.distance_LEO_user = Param(model.M, model.N, model.O, within=NonNegativeReals, initialize=distance_LEO_user_data)
 def channel_LEO_user(model, i, j):
     return pow(sum(value(model.distance_LEO_user[i, j, k]) * model.rho[i, j, k] for k in model.O), -2)
@@ -114,8 +117,8 @@ model.total_capacity_LEO_user = Param(model.M, model.N, initialize=total_capacit
 # 初始化任务长度和计算需求
 def task_l_init(model):
     # task_o_data = np.linspace(0.5 * 10 ** 3, 3 * 10 ** 3, num=n_bs_number * n_per_cell_number)
-    task_o_data = np.linspace(10 ** 3, 10 ** 3, num=n_bs_number * n_per_cell_number)
-    task_o_dict = {(i+1, j+1): task_o_data[i*n_per_cell_number + j] for i in range(n_bs_number) for j in range(n_per_cell_number)}
+    task_o_data = np.random.uniform(10 ** 3, 10 ** 3, (n_bs_number , n_per_cell_number))
+    task_o_dict = {(i+1, j+1): task_o_data[i, j] for i in range(n_bs_number) for j in range(n_per_cell_number)}
     return task_o_dict
 model.task_l = Param(model.M, model.N, initialize=task_l_init)
 
@@ -151,13 +154,13 @@ model.power_trans_local = Param(model.M, model.N, within=NonNegativeReals, initi
 # p ij BSi
 model.power_trans_bs = Param(model.M, model.N, initialize=1.1)
 # P BS i
-model.power_compute_bs = Param(model.M, initialize=1.3)
+model.power_compute_bs = Param(model.M, initialize=1)
 # P ij LEOk
-model.power_trans_leo = Param(model.M, model.N, model.O, initialize=1.9)
+model.power_trans_leo = Param(model.M, model.N, model.O, initialize=2)
 # P LEO k
 model.power_compute_leo = Param(model.O, initialize=1.7)
 # P ISL
-model.power_ISL = Param(model.O, initialize=1.2)
+model.power_ISL = Param(model.O, initialize=1)
 
 
 # energy model
@@ -204,9 +207,9 @@ model.power_ISL = Param(model.O, initialize=1.2)
 #
 # model.energy_leo = Param(model.M, model.N, within=NonNegativeReals, initialize=1)
 #
-model.energy_local = Param(model.M, model.N, initialize=1.1)
-model.energy_bs = Param(model.M, model.N, initialize=1.2)
-model.energy_leo = Param(model.M, model.N, initialize=1.3)
+model.energy_local = Var(model.M, model.N, initialize=1.1)
+model.energy_bs = Var(model.M, model.N, initialize=1.2)
+model.energy_leo = Var(model.M, model.N, initialize=1.3)
 
 # 定义能量计算约束
 def energy_local_compute(model, i, j):
@@ -249,25 +252,25 @@ model.energy_leo_compute = Constraint(model.M, model.N, rule=energy_leo_compute)
 def z1_rule(model, i, j, k):
     return model.z1[i, j, k] == model.epsilon[i, j] * model.power_trans_leo[i, j, k] * model.task_l[i, j]
 
-model.z1_constr = Var(model.M, model.N, model.O, initialize=z1_rule)
+model.z1_constr = Constraint(model.M, model.N, model.O, rule=z1_rule)
 
 # z2 * capacity_LEO_user = z1
 def z2_rule(model, i, j, k):
     return model.z2[i, j, k] * model.capacity_LEO_user[i, j] == model.z1[i, j, k]
 
-model.z2_constr = Var(model.M, model.N, model.O, initialize=z2_rule)
+model.z2_constr = Constraint(model.M, model.N, model.O, rule=z2_rule)
 
 # z3 = delta * power_compute_leo * task_l * task_c
 def z3_rule(model, i, j, k):
     return model.z3[i, j, k] == model.delta[i, j, k] * model.power_compute_leo[k] * model.task_l[i, j] * model.task_c[i, j]
 
-model.z3_constr = Var(model.M, model.N, model.O, initialize=z3_rule)
+model.z3_constr = Constraint(model.M, model.N, model.O, rule=z3_rule)
 
 # z4 * f_leo = z3
 def z4_rule(model, i, j, k):
     return model.z4[i, j, k] * model.f_leo[i, j, k] == model.z3[i, j, k]
 
-model.z4_constr = Var(model.M, model.N, model.O, initialize=z4_rule)
+model.z4_constr = Constraint(model.M, model.N, model.O, rule=z4_rule)
 
 
 
@@ -387,22 +390,22 @@ def bs_capacity_rule(model,i):
 
 
 # 定义计算能力约束 拆分约束
-# def leo_compute_capacity_rule(model, k):
-#     return sum(model.gamma[i, j] * model.eta[i, j, k] * model.f_leo[i, j, k] for i in model.M for j in model.N) <= model.leo_compute_capacity[k]
-model.zy = Var(model.M, model.N, model.O, within=NonNegativeReals, initialize=0.3)
-def linear_constraint1(model, i, j, k):
-    return model.zy[i, j, k] <= model.gamma[i, j]
-model.linear_constraint1 = Constraint(model.M, model.N, model.O, rule=linear_constraint1)
-
-def linear_constraint2(model, i, j, k):
-    return model.zy[i, j, k] <= model.eta[i, j, k]
-model.linear_constraint2 = Constraint(model.M, model.N, model.O, rule=linear_constraint2)
-
-def linear_constraint3(model, i, j, k):
-    return model.zy[i, j, k] >= model.gamma[i, j] + model.eta[i, j, k] - 1
-model.linear_constraint3 = Constraint(model.M, model.N, model.O, rule=linear_constraint3)
 def leo_compute_capacity_rule(model, k):
-    return sum(model.zy[i, j, k] * model.f_leo[i, j, k] for i in model.M for j in model.N) <= model.leo_compute_capacity[k]
+    return sum(model.gamma[i, j] * model.eta[i, j, k] * model.f_leo[i, j, k] for i in model.M for j in model.N) <= model.leo_compute_capacity[k]
+# model.zy = Var(model.M, model.N, model.O, within=NonNegativeReals, initialize=0.3)
+# def linear_constraint1(model, i, j, k):
+#     return model.zy[i, j, k] <= model.gamma[i, j]
+# model.linear_constraint1 = Constraint(model.M, model.N, model.O, rule=linear_constraint1)
+#
+# def linear_constraint2(model, i, j, k):
+#     return model.zy[i, j, k] <= model.eta[i, j, k]
+# model.linear_constraint2 = Constraint(model.M, model.N, model.O, rule=linear_constraint2)
+#
+# def linear_constraint3(model, i, j, k):
+#     return model.zy[i, j, k] >= model.gamma[i, j] + model.eta[i, j, k] - 1
+# model.linear_constraint3 = Constraint(model.M, model.N, model.O, rule=linear_constraint3)
+# def leo_compute_capacity_rule(model, k):
+#     return sum(model.zy[i, j, k] * model.f_leo[i, j, k] for i in model.M for j in model.N) <= model.leo_compute_capacity[k]
 
 
 # 定义用户只能连接一个卫星的约束
@@ -495,58 +498,7 @@ def relaxed_obj_rule(model):
     # 定义你的目标函数规则
     return sum(model.energy_local[i, j] + model.energy_bs[i, j] + model.energy_leo[i, j] for i in model.M for
                 j in model.N)
-# # 将 Pyomo 模型转换为 Gurobi 模型
-# def convert_pyomo_to_gurobi(pyomo_model):
-#     gurobi_model = gp.Model()
-#
-#     # 添加变量
-#     var_dict = {}
-#     for v in pyomo_model.component_objects(Var, active=True):
-#         for index in v:
-#             lb = v[index].lb if v[index].lb is not None else -GRB.INFINITY
-#             ub = v[index].ub if v[index].ub is not None else GRB.INFINITY
-#             var_dict[str(v[index])] = gurobi_model.addVar(lb=lb, ub=ub, name=str(v[index]))
-#
-#     gurobi_model.update()
-#
-#     # 添加约束
-#     for c in pyomo_model.component_objects(Constraint, active=True):
-#         for index in c:
-#             expr_str = str(c[index].body)
-#             for var_name, gurobi_var in var_dict.items():
-#                 expr_str = expr_str.replace(var_name, f'var_dict["{var_name}"]')
-#             gurobi_model.addConstr(eval(expr_str), name=str(c[index]))
-#
-#     # 添加目标函数
-#     if pyomo_model.component('obj'):
-#         obj_str = str(pyomo_model.obj.expr)
-#         for var_name, gurobi_var in var_dict.items():
-#             obj_str = obj_str.replace(var_name, f'var_dict["{var_name}"]')
-#         gurobi_model.setObjective(eval(obj_str), GRB.MINIMIZE)
-#
-#     gurobi_model.update()
-#     return gurobi_model
-#
-# # 转换模型
-# gurobi_model = convert_pyomo_to_gurobi(model)
-# # 求解模型
-# gurobi_model.optimize()
-#
-# # 检查模型是否不可行
-# if gurobi_model.status == GRB.INFEASIBLE:
-#     print("模型不可行，正在生成 IIS...")
-#     gurobi_model.computeIIS()
-#     gurobi_model.write("model.ilp")
-#
-#     # 打印 IIS 信息
-#     for c in gurobi_model.getConstrs():
-#         if c.IISConstr:
-#             print(f"不可行约束: {c.constrName}")
-# else:
-#     print("模型可行")
-#     for v in gurobi_model.getVars():
-#         print(f"{v.varName} = {v.x}")
-#
+
 
 def origin_obj_rule(model):
     # 定义你的目标函数规则
@@ -594,16 +546,16 @@ class Relaxation:
 max_iter = 50
 relaxed_constrs = (
             [model.time_constraint[i, j] for i in model.M for j in model.N]
-            + [model.bs_bandwidth_constraint[i] for i in model.M]
-            + [model.leo_bandwidth_constraint[k] for k in model.O]
-            + [model.cache_constraint[k] for k in model.O]
-            + [model.bs_capacity_constraint[i] for i in model.M]
+            # + [model.bs_bandwidth_constraint[i] for i in model.M]
+            # + [model.leo_bandwidth_constraint[k] for k in model.O]
+            # + [model.cache_constraint[k] for k in model.O]
+            # + [model.bs_capacity_constraint[i] for i in model.M]
             + [model.leo_compute_capacity_constraint[k] for k in model.O]
     )
 solver = SolverFactory('gurobi', tee=True)
-solver.options['NumericFocus'] = 0
-solver.options['MIPGap'] = 0.01  # 设置 MIPGap
-solver.options['TimeLimit'] = 60  # 设置时间限制
+solver.options['NumericFocus'] = 2
+# solver.options['MIPGap'] = 0.01  # 设置 MIPGap
+# solver.options['TimeLimit'] = 60  # 设置时间限制
 
 lagrangian_relaxation = Relaxation(model, relaxed_constrs)
 
@@ -620,49 +572,21 @@ for z in range(max_iter):
     # 更新拉格朗日乘子
     lagrangian_relaxation.update_lambdas()
 
-    # if results.solver.termination_condition == TerminationCondition.infeasible:
-    #     print("模型不可行，正在生成IIS...")
-    #     model.iis = Suffix(direction=Suffix.IMPORT)
-    #     results = solver.solve(model, tee=True, options={'iisfind': 1})
-    #     model.write("model.ilp")
-    #
-    #     # 打印IIS信息
-    #     for constraint in model.component_objects(Constraint, active=True):
-    #         for index in constraint:
-    #             if constraint[index].iis:
-    #                 print(f"不可行约束: {constraint.name}[{index}]")
-    # # 检查求解状态
-    # if results.solver.termination_condition == TerminationCondition.infeasible:
-    #     print("Model is infeasible")
-    #
-    #     # 使用IIS工具诊断不可行性
-    #     model.iis = Suffix(direction=Suffix.IMPORT)
-    #     results = solver.solve(model, tee=True, options={'iisfind': 1})
-    #
-    #     # 打印IIS信息
-    #     for constraint in model.component_objects(Constraint, active=True):
-    #         for index in constraint:
-    #             if constraint[index].iis:
-    #                 print(f"Infeasible constraint: {constraint.name}[{index}]")
-    # else:
-    #     print("Model is feasible")
-    #     model.display()
-    # 打印状态
     print(f"Iteration {z + 1}/{max_iter}")
     print(f"Subgradient: {lagrangian_relaxation.subgrad}")
     print(f"Step size: {step_size}")
     print(f"Lambdas: {lagrangian_relaxation.lambdas}")
-    print(results)
-    print(f"Objective expression: {model.obj.expr}")
+
+    # print(f"Objective expression: {model.obj.expr}")
 
 
-    print(model.power_trans_bs[1, 1])
-    print(model.capacity_BS_user[1, 1])
-    print(model.power_compute_bs[1])
-    print(model.compute_capacity_user[1, 1])
-    print(model.energy_bs[1, 1])
-    #
-    #
+    # print(model.power_trans_bs[1, 1])
+    # print(model.capacity_BS_user[1, 1])
+    # print(model.power_compute_bs[1])
+    # print(model.compute_capacity_user[1, 1])
+    # print(model.energy_bs[1, 1])
+    # #
+    # #
     # print('Alpha values:')
     # for i in model.M:
     #     for j in model.N:
@@ -678,22 +602,22 @@ for z in range(max_iter):
     #     for j in model.N:
     #         print(f'gamma[{i},{j}] = {model.gamma[i, j].value}')
     #
-    # print('rho values:')
-    # for i in model.M:
-    #     for j in model.N:
-    #         for k in model.O:
-    #             print(f'rho[{i},{j},{k}] = {model.rho[i, j, k].value}')
-    # print('eta values:')
-    # for i in model.M:
-    #     for j in model.N:
-    #         for k in model.O:
-    #             print(f'eta[{i},{j},{k}] = {model.eta[i, j, k].value}')
-    # print('epsilon values:')
-    # for i in model.M:
-    #     for j in model.N:
-    #         print(f'epsilon[{i},{j}] = {model.epsilon[i, j].value}')
-    # print('delta values:')
-    # for i in model.M:
-    #     for j in model.N:
-    #         for k in model.O:
-    #             print(f'delta[{i},{j},{k}] = {model.delta[i, j, k].value}')
+    print('rho values:')
+    for i in model.M:
+        for j in model.N:
+            for k in model.O:
+                print(f'rho[{i},{j},{k}] = {model.rho[i, j, k].value}')
+    print('eta values:')
+    for i in model.M:
+        for j in model.N:
+            for k in model.O:
+                print(f'eta[{i},{j},{k}] = {model.eta[i, j, k].value}')
+    print('epsilon values:')
+    for i in model.M:
+        for j in model.N:
+            print(f'epsilon[{i},{j}] = {model.epsilon[i, j].value}')
+    print('delta values:')
+    for i in model.M:
+        for j in model.N:
+            for k in model.O:
+                print(f'delta[{i},{j},{k}] = {model.delta[i, j, k].value}')

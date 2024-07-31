@@ -420,6 +420,7 @@ class Relaxation:
 
 
 
+
 # 最大迭代次数
 max_iter = 50
 relaxed_constrs = (
@@ -450,3 +451,48 @@ def solve_subproblem_1(c_set, d_set, lamda_set):
     for i in range(len(A)):
         sol_matrix[i][sol_index_list[i]]=1
     return sol_matrix,sol_value
+
+def obj_expression(model):
+    return sum(
+        model.energy_local[i, j] + model.energy_bs[i, j] + model.energy_leo[i, j] for i in model.M for
+        j in model.N)
+model.obj = Objective(rule=obj_expression, sense=minimize)
+
+
+# 定义松弛后的目标函数
+def relaxed_obj_rule(model, m, o, p, q, r, s):
+    return sum(
+        model.alpha[i, j] * model.task_l[i, j] * model.task_c[i, j] * (model.m[i, j] + model.power_compute_local[i, j])
+        + model.beta[i, j] * (
+                (model.task_l[i, j] / model.capacity_BS_user[i, j] * (
+                            m[i, j] + model.trans_power[i, j] + model.power_trans_bs[i, j]))
+                + (model.task_l[i, j] * model.task_c[i, j] / model.f_bs[i, j] * (m[i, j] + model.power_compute_bs[i]))
+                + o[i] * model.epsilon[i, j]
+                + s[i] * model.f_bs[i, j]
+        )
+        + model.gamma[i, j] *
+        sum(
+            model.rho[i, j, k] * (model.task_l[i, j] / model.capacity_LEO_user[i, j] * (
+                        m[i, j] + model.trans_power[i, j] + model.power_trans_leo[i, j, k])
+                                  + p[k] * model.delta[i, j, k] + r[k] * model.task_l[i, j])
+            + model.eta[i, j, k] * (model.task_l[i, j] * model.task_c[i, j] / model.f_leo[i, j, k] * (
+                        m[i, j] + model.power_compute_leo[k])
+                                    + q[k] * model.f_leo[i, j, k])
+            + model.hop_number[i, j] * model.task_l[i, j] / model.rate_ISL[i, j, k] * (m[i, j] + model.power_ISL[k])
+            for k in model.O
+        )
+        for i in model.M for j in model.N
+        )
+    - sum(m[i, j] * model.deadline[i, j] for i in model.M for j in model.N)
+    - sum(o[i] * model.bs_bandwidth_constraint[i] for i in model.M)
+    - sum(p[k] * model.leo_bandwidth_constraint[k] for k in model.O)
+    - sum(q[k] * model.leo_compute_capacity[k] for k in model.O)
+    - sum(r[k] * model.cache[k] for k in model.O)
+    - sum(s[i] * model.bs_compute_capacity[i] for i in model.M)
+
+def function(model):
+    function_beta = sum((model.task_l[i, j] / model.capacity_BS_user[i, j] * (
+                            m[i, j] + model.trans_power[i, j] + model.power_trans_bs[i, j]))
+                + (model.task_l[i, j] * model.task_c[i, j] / model.f_bs[i, j] * (m[i, j] + model.power_compute_bs[i]))
+                + o[i] * model.epsilon[i, j]
+                + s[i] * model.f_bs[i, j] for i in model.M for j in model.N)
